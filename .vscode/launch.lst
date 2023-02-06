@@ -1,0 +1,117 @@
+# file opened: /Users/martin/gitroot/martin-spectrum/.vscode/launch.json
+launch.json(1): error: Invalid labelname: {
+ 1    0000              {
+ 2    0000              	// Use IntelliSense to learn about possible attributes.
+ 3    0000              	// Hover to view descriptions of existing attributes.
+ 4    0000              	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+launch.json(5): error: Unrecognized instruction: "version"
+ 5    0000              	"version"
+launch.json(5): error: Unrecognized instruction: "0.2.0",
+ 5    0000                "0.2.0",
+launch.json(6): error: Unrecognized instruction: "configurations"
+ 6    0000              	"configurations"
+launch.json(6): error: Unrecognized instruction: [
+ 6    0000                [
+launch.json(7): error: Unrecognized instruction: {
+ 7    0000              		{
+launch.json(8): error: Unrecognized instruction: "name"
+ 8    0000              			"name"
+launch.json(8): error: Unrecognized instruction: "Z80 Debugger",
+ 8    0000                "Z80 Debugger",
+launch.json(9): error: Unrecognized instruction: "type"
+ 9    0000              			"type"
+launch.json(9): error: Unrecognized instruction: "dezog",
+ 9    0000                "dezog",
+launch.json(10): error: Unrecognized instruction: "request"
+10    0000              			"request"
+launch.json(10): error: Unrecognized instruction: "launch",
+10    0000                "launch",
+launch.json(11): error: Unrecognized instruction: "remoteType"
+11    0000              			"remoteType"
+launch.json(11): error: Unrecognized instruction: "zrcp",
+11    0000                "zrcp",
+launch.json(12): error: Unrecognized instruction: "zrcp"
+12    0000              			"zrcp"
+launch.json(12): error: Unrecognized instruction: {
+12    0000                {
+launch.json(13): error: Unrecognized instruction: "hostname"
+13    0000              				"hostname"
+launch.json(13): error: Unrecognized instruction: "localhost",
+13    0000                "localhost",
+launch.json(14): error: Unrecognized instruction: "port"
+14    0000              				"port"
+launch.json(14): error: Unrecognized instruction: 10000
+14    0000                10000
+launch.json(15): error: Unrecognized instruction: },
+15    0000              			},
+launch.json(16): error: Unrecognized instruction: "topOfStack"
+16    0000              			"topOfStack"
+launch.json(16): error: Unrecognized instruction: "Stack_Top",
+16    0000                "Stack_Top",
+launch.json(17): error: Unrecognized instruction: "rootFolder"
+17    0000              			"rootFolder"
+launch.json(17): error: Unrecognized instruction: "${fileDirname}",
+17    0000                "${fileDirname}",
+launch.json(18): error: Unrecognized instruction: "listFiles"
+18    0000              			"listFiles"
+launch.json(18): error: Unrecognized instruction: [
+18    0000                [
+launch.json(19): error: Unrecognized instruction: {
+19    0000              				{
+launch.json(20): error: Unrecognized instruction: "path"
+20    0000              					"path"
+launch.json(20): error: Unrecognized instruction: "${fileDirname}/${fileBasenameNoExtension}.lst",
+20    0000                "${fileDirname}/${fileBasenameNoExtension}.lst",
+launch.json(21): error: Unrecognized instruction: "asm"
+21    0000              					"asm"
+launch.json(21): error: Unrecognized instruction: "sjasmplus",
+21    0000                "sjasmplus",
+launch.json(22): error: Unrecognized instruction: "useFiles"
+22    0000              					"useFiles"
+launch.json(22): error: Unrecognized instruction: true,
+22    0000                true,
+launch.json(23): error: Unrecognized instruction: "mainFile"
+23    0000              					"mainFile"
+launch.json(23): error: Unrecognized instruction: "${fileDirname}/${fileBasenameNoExtension}.z80",
+23    0000                "${fileDirname}/${fileBasenameNoExtension}.z80",
+launch.json(24): error: Unrecognized instruction: "srcDirs"
+24    0000              					"srcDirs"
+launch.json(24): error: Unrecognized instruction: [ "lib" ]
+24    0000                [ "lib" ]
+launch.json(25): error: Unrecognized instruction: }
+25    0000              				}
+launch.json(26): error: Unrecognized instruction: ],
+26    0000              			],
+launch.json(27): error: Unrecognized instruction: "disassemblerArgs"
+27    0000              			"disassemblerArgs"
+launch.json(27): error: Unrecognized instruction: {
+27    0000                {
+launch.json(28): error: Unrecognized instruction: "esxdosRst"
+28    0000              				"esxdosRst"
+launch.json(28): error: Unrecognized instruction: true
+28    0000                true
+launch.json(29): error: Unrecognized instruction: },
+29    0000              			},
+launch.json(30): error: Unrecognized instruction: "load"
+30    0000              			"load"
+launch.json(30): error: Unrecognized instruction: "../build/${fileBasenameNoExtension}.sna",
+30    0000                "../build/${fileBasenameNoExtension}.sna",
+launch.json(31): error: Unrecognized instruction: "skipInterrupt"
+31    0000              			"skipInterrupt"
+launch.json(31): error: Unrecognized instruction: false,
+31    0000                false,
+launch.json(32): error: Unrecognized instruction: "startAutomatically"
+32    0000              			"startAutomatically"
+launch.json(32): error: Unrecognized instruction: true,
+32    0000                true,
+launch.json(33): error: Unrecognized instruction: "preLaunchTask"
+33    0000              			"preLaunchTask"
+launch.json(33): error: Unrecognized instruction: "sjasmplus"
+33    0000                "sjasmplus"
+launch.json(34): error: Unrecognized instruction: }
+34    0000              		}
+launch.json(35): error: Unrecognized instruction: ]
+35    0000              	]
+launch.json(36): error: Invalid labelname: }
+36    0000              }
+# file closed: /Users/martin/gitroot/martin-spectrum/.vscode/launch.json

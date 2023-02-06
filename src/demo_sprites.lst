@@ -1,0 +1,1386 @@
+# file opened: /Users/martin/gitroot/martin-spectrum/src/demo_sprites.z80
+  1   0000              ;
+  2   0000              ; Title:        Sprite Demo
+  3   0000              ; Author:       Dean Belfield
+  4   0000              ; Created:	20/08/2011
+  5   0000              ; Last updated: 20/08/2011
+  6   0000              ;
+  7   0000              ; Requires:	keyboard, output, screen_buffer, sound, sprite, math
+  8   0000              ;
+  9   0000              ; Modinfo:
+ 10   0000              ;
+ 11   0000
+ 12   0000              			DEVICE ZXSPECTRUM48			; sjasmplus directive for SAVESNA at end
+ 13   0000
+ 14   0000              Stack_Top:		EQU 0xFFF0
+ 15   0000              Code_Start:		EQU 0x8000
+ 16   0000
+ 17   0000              			ORG Code_Start
+ 18   8000
+ 19   8000 C3 5B 87     			JP MAIN					; JP past the included code to MAIN
+ 20   8003
+ 21   8003              			include "../lib/keyboard.z80"
+# file opened: /Users/martin/gitroot/martin-spectrum/src/../lib/keyboard.z80
+  1+  8003              ;
+  2+  8003              ; Title:	ZX Spectrum Keyboard Routines
+  3+  8003              ; Author:	Dean Belfield
+  4+  8003              ; Created:	29/07/2011
+  5+  8003              ; Last Updated:	29/07/2011
+  6+  8003              ;
+  7+  8003              ; Requires:
+  8+  8003              ;
+  9+  8003              ; Modinfo:
+ 10+  8003              ;
+ 11+  8003
+ 12+  8003              ; Read the in-game controls
+ 13+  8003              ; HL: The control map
+ 14+  8003              ; Returns:
+ 15+  8003              ;  A: Input flags - 000UDLRF (Up, Down, Left, Right, Fire)
+ 16+  8003              ; Zero flag set if no key pressed
+ 17+  8003              ;
+ 18+  8003 16 05        Read_Controls:		LD D, 5				; Number of controls to check
+ 19+  8005 1E 00        			LD E, 0				; The output flags
+ 20+  8007 0E FE        			LD C,0xFE			; Low is always 0xFE for reading keyboard
+ 21+  8009 46           Read_Controls1:		LD B,(HL)			; Get the keyboard port address
+ 22+  800A 23           			INC HL
+ 23+  800B ED 78        			IN A,(C)			; Read the rows in
+ 24+  800D A6           			AND (HL)			; And with the mask
+ 25+  800E 20 01        			JR NZ, Read_Controls2		; Skip if not pressed (bit is 0)
+ 26+  8010 37           			SCF				; Set C flag
+ 27+  8011 CB 13        Read_Controls2:		RL E				; Rotate the carry flag into E
+ 28+  8013 23           			INC HL
+ 29+  8014 15           			DEC D
+ 30+  8015 20 F2        			JR NZ, Read_Controls1		; Loop
+ 31+  8017 7B           			LD A,E				; Fetch the key flags
+ 32+  8018 A7           			AND A				; Check for 0
+ 33+  8019 C9           			RET
+ 34+  801A
+ 35+  801A
+ 36+  801A              ; As Read_Keyboard, but with debounce
+ 37+  801A              ;
+ 38+  801A CD 27 80     Read_Keyboard_Debounce:	CALL Read_Keyboard		; A debounced versiion - Read the keyboard
+ 39+  801D A7           			AND A				; Quick way to do CP 0
+ 40+  801E 20 FA        			JR NZ, Read_Keyboard_Debounce	; Loop until key released
+ 41+  8020 CD 27 80     1:			CALL Read_Keyboard		; And second loop reading the keyboard
+ 42+  8023 A7           			AND A 				; CP 0
+ 43+  8024 28 FA        			JR Z, 1B			; Loop until key is pressed
+ 44+  8026 C9           			RET
+ 45+  8027
+ 46+  8027              ; Read the keyboard and return an ASCII character code
+ 47+  8027              ; Returns:
+ 48+  8027              ;  A: The character code, or 0 if no key pressed
+ 49+  8027              ; BC: The keyboard port (0x7FFE to 0xFEFE)
+ 50+  8027              ;
+ 51+  8027 21 45 80     Read_Keyboard:		LD HL,Keyboard_Map		; Point HL at the keyboard list
+ 52+  802A 16 08        			LD D,8				; This is the number of ports (rows) to check
+ 53+  802C 0E FE        			LD C,0xFE			; Low is always 0xFE for reading keyboard ports
+ 54+  802E 46           Read_Keyboard_0:	LD B,(HL)			; Get the keyboard port address
+ 55+  802F 23           			INC HL				; Increment to keyboard list of table
+ 56+  8030 ED 78        			IN A,(C)			; Read the row of keys in
+ 57+  8032 E6 1F        			AND 0x1F			; We are only interested in the first five bits
+ 58+  8034 1E 05        			LD E,5				; This is the number of keys in the row
+ 59+  8036 CB 3F        Read_Keyboard_1:	SRL A				; Shift A right; bit 0 sets carry bit
+ 60+  8038 30 09        			JR NC,Read_Keyboard_2		; If the bit is 0, we've found our key
+ 61+  803A 23           			INC HL				; Go to next table address
+ 62+  803B 1D           			DEC E				; Decrement key loop counter
+ 63+  803C 20 F8        			JR NZ,Read_Keyboard_1		; Loop around until this row finished
+ 64+  803E 15           			DEC D				; Decrement row loop counter
+ 65+  803F 20 ED        			JR NZ,Read_Keyboard_0		; Loop around until we are done
+ 66+  8041 A7           			AND A				; Clear A (no key found)
+ 67+  8042 C9           			RET
+ 68+  8043 7E           Read_Keyboard_2:       	LD A,(HL)			; We've found a key at this point; fetch the character code!
+ 69+  8044 C9           			RET
+ 70+  8045
+ 71+  8045 FE 23 5A 58  Keyboard_Map:		DB 0xFE,"#","Z","X","C","V"
+ 71+  8049 43 56
+ 72+  804B FD 41 53 44  			DB 0xFD,"A","S","D","F","G"
+ 72+  804F 46 47
+ 73+  8051 FB 51 57 45  			DB 0xFB,"Q","W","E","R","T"
+ 73+  8055 52 54
+ 74+  8057 F7 31 32 33  			DB 0xF7,"1","2","3","4","5"
+ 74+  805B 34 35
+ 75+  805D EF 30 39 38  			DB 0xEF,"0","9","8","7","6"
+ 75+  8061 37 36
+ 76+  8063 DF 50 4F 49  			DB 0xDF,"P","O","I","U","Y"
+ 76+  8067 55 59
+ 77+  8069 BF 23 4C 4B  			DB 0xBF,"#","L","K","J","H"
+ 77+  806D 4A 48
+ 78+  806F 7F 20 23 4D  			DB 0x7F," ","#","M","N","B"
+ 78+  8073 4E 42
+ 79+  8075
+ 80+  8075 FB 01        Input_Custom:		DB 0xFB, %00000001		; Q (Up)
+ 81+  8077 FD 01        			DB 0xFD, %00000001		; A (Down)
+ 82+  8079 DF 02        			DB 0xDF, %00000010		; O (Left)
+ 83+  807B DF 01        			DB 0xDF, %00000001		; P (Right)
+ 84+  807D 7F 01        			DB 0x7F, %00000001		; Space (Fire)
+ 85+  807F
+# file closed: /Users/martin/gitroot/martin-spectrum/src/../lib/keyboard.z80
+ 22   807F              			include "../lib/output.z80"
+# file opened: /Users/martin/gitroot/martin-spectrum/src/../lib/output.z80
+  1+  807F              ;
+  2+  807F              ; Title:	ZX Spectrum Standard Output Routines
+  3+  807F              ; Author:	Dean Belfield
+  4+  807F              ; Created:	29/07/2011
+  5+  807F              ; Last Updated:	08/02/2020
+  6+  807F              ;
+  7+  807F              ; Requires:
+  8+  807F              ;
+  9+  807F              ; Modinfo:
+ 10+  807F              ;
+ 11+  807F              ; 02/07/2012:	Added Pixel_Address_Down and Pixel_Address_Up routines
+ 12+  807F              ; 04/07/2012:	Moved Clear_Screen to Screen_Buffer
+ 13+  807F              ; 08/02/2010:	Added Print_BC
+ 14+  807F              ;		Moved Clear_Screen into here (originally in screen_buffer.z80)
+ 15+  807F              ;		All output routines refactored to use HL for screen address
+ 16+  807F              ;		Added Fill_Attr routine
+ 17+  807F              ;
+ 18+  807F
+ 19+  807F              ; Simple clear-screen routine
+ 20+  807F              ; Uses LDIR to block clear memory
+ 21+  807F              ; A:  Colour to clear attribute block of memory with
+ 22+  807F              ;
+ 23+  807F 21 00 40     Clear_Screen:		LD HL,16384			; Start address of screen bitmap
+ 24+  8082 11 01 40     			LD DE,16385			; Address + 1
+ 25+  8085 01 00 18     			LD BC,6144			; Length of bitmap memory to clear
+ 26+  8088 36 00        			LD (HL),0			; Set the first byte to 0
+ 27+  808A ED B0        			LDIR				; Copy this byte to the second, and so on
+ 28+  808C 01 FF 02     			LD BC,767			; Length of attribute memory, less one to clear
+ 29+  808F 77           			LD (HL),A			; Set the first byte to A
+ 30+  8090 ED B0        			LDIR				; Copy this byte to the second, and so on
+ 31+  8092 C9           			RET
+ 32+  8093
+ 33+  8093              ; Fill a box of the screen with a solid colour
+ 34+  8093              ;  A: The colour
+ 35+  8093              ; HL: Address in the attribute map
+ 36+  8093              ;  C: Width
+ 37+  8093              ;  B: Height
+ 38+  8093              ;
+ 39+  8093 11 20 00     Fill_Attr:		LD DE,32
+ 40+  8096 E5           1:			PUSH HL
+ 41+  8097 C5           			PUSH BC
+ 42+  8098 77           2:			LD (HL), A
+ 43+  8099 2C           			INC L
+ 44+  809A 0D           			DEC C
+ 45+  809B 20 FB        			JR NZ, 2B
+ 46+  809D C1           			POP BC
+ 47+  809E E1           			POP HL
+ 48+  809F 19           			ADD HL,DE
+ 49+  80A0 10 F4        			DJNZ 1B
+ 50+  80A2 C9           			RET
+ 51+  80A3
+ 52+  80A3              ; Print String Data
+ 53+  80A3              ; First two bytes of string contain X and Y char position, then the string
+ 54+  80A3              ; Individual strings are terminated with 0xFE
+ 55+  80A3              ; End of data is terminated with 0xFF
+ 56+  80A3              ; IX: Address of string
+ 57+  80A3              ;
+ 58+  80A3 DD 6E 00     Print_String:		LD L,(IX+0)			; Fetch the X coordinate
+ 59+  80A6 DD 23        			INC IX				; Increase HL to the next memory location
+ 60+  80A8 DD 66 00     			LD H,(IX+0)			; Fetch the Y coordinate
+ 61+  80AB DD 23        			INC IX				; Increase HL to the next memory location
+ 62+  80AD CD C1 80     			CALL Get_Char_Address		; Calculate the screen address (in DE)
+ 63+  80B0 DD 7E 00     Print_String_0:		LD A,(IX)			; Fetch the character to print
+ 64+  80B3 DD 23        			INC IX				; Increase HL to the next character
+ 65+  80B5 FE FE        			CP 0xFE				; Compare with 0xFE
+ 66+  80B7 28 EA        			JR Z,Print_String		; If it is equal to 0xFE then loop back to print next string
+ 67+  80B9 D0           			RET NC				; If it is greater or equal to (carry bit set) then
+ 68+  80BA CD 54 81     			CALL Print_Char			; Print the character
+ 69+  80BD 2C           			INC L				; Go to the next screen address
+ 70+  80BE 18 F0        			JR Print_String_0		; Loop back to print next character
+ 71+  80C0 C9           			RET
+ 72+  80C1
+ 73+  80C1              ; Get screen address
+ 74+  80C1              ; H = Y character position
+ 75+  80C1              ; L = X character position
+ 76+  80C1              ; Returns address in HL
+ 77+  80C1              ;
+ 78+  80C1 7C           Get_Char_Address:	LD A,H
+ 79+  80C2 E6 07        			AND %00000111
+ 80+  80C4 1F           			RRA
+ 81+  80C5 1F           			RRA
+ 82+  80C6 1F           			RRA
+ 83+  80C7 1F           			RRA
+ 84+  80C8 B5           			OR L
+ 85+  80C9 6F           			LD L,A
+ 86+  80CA 7C           			LD A,H
+ 87+  80CB E6 18        			AND %00011000
+ 88+  80CD F6 40        			OR %01000000
+ 89+  80CF 67           			LD H,A
+ 90+  80D0 C9           			RET				; Returns screen address in HL
+ 91+  80D1
+ 92+  80D1              ; Move HL down one character line
+ 93+  80D1              ;
+ 94+  80D1 7D           Char_Address_Down:	LD A, L
+ 95+  80D2 C6 20        			ADD A, 32
+ 96+  80D4 6F           			LD L, A
+ 97+  80D5 D0           			RET NC
+ 98+  80D6 7C           			LD A, H
+ 99+  80D7 C6 08        			ADD A, 8
+100+  80D9 67           			LD H, A
+101+  80DA C9           			RET
+102+  80DB
+103+  80DB              ; Get screen address
+104+  80DB              ; B = Y pixel position
+105+  80DB              ; C = X pixel position
+106+  80DB              ; Returns address in HL and pixel position within character in A
+107+  80DB              ;
+108+  80DB 78           Get_Pixel_Address:	LD A,B				; Calculate Y2,Y1,Y0
+109+  80DC E6 07        			AND %00000111			; Mask out unwanted bits
+110+  80DE F6 40        			OR %01000000			; Set base address of screen
+111+  80E0 67           			LD H,A				; Store in H
+112+  80E1 78           			LD A,B				; Calculate Y7,Y6
+113+  80E2 1F           			RRA				; Shift to position
+114+  80E3 1F           			RRA
+115+  80E4 1F           			RRA
+116+  80E5 E6 18        			AND %00011000			; Mask out unwanted bits
+117+  80E7 B4           			OR H				; OR with Y2,Y1,Y0
+118+  80E8 67           			LD H,A				; Store in H
+119+  80E9 78           			LD A,B				; Calculate Y5,Y4,Y3
+120+  80EA 17           			RLA				; Shift to position
+121+  80EB 17           			RLA
+122+  80EC E6 E0        			AND %11100000			; Mask out unwanted bits
+123+  80EE 6F           			LD L,A				; Store in L
+124+  80EF 79           			LD A,C				; Calculate X4,X3,X2,X1,X0
+125+  80F0 1F           			RRA				; Shift into position
+126+  80F1 1F           			RRA
+127+  80F2 1F           			RRA
+128+  80F3 E6 1F        			AND %00011111			; Mask out unwanted bits
+129+  80F5 B5           			OR L				; OR with Y5,Y4,Y3
+130+  80F6 6F           			LD L,A				; Store in L
+131+  80F7 79           			LD A,C
+132+  80F8 E6 07        			AND 7
+133+  80FA C9           			RET
+134+  80FB
+135+  80FB              ; Move HL down one pixel line
+136+  80FB              ;
+137+  80FB 24           Pixel_Address_Down:	INC H				; Go down onto the next pixel line
+138+  80FC 7C           			LD A,H				; Check if we have gone onto next character boundary
+139+  80FD E6 07        			AND 7
+140+  80FF C0           			RET NZ				; No, so skip the next bit
+141+  8100 7D           			LD A,L				; Go onto the next character line
+142+  8101 C6 20        			ADD A,32
+143+  8103 6F           			LD L,A
+144+  8104 D8           			RET C				; Check if we have gone onto next third of screen
+145+  8105 7C           			LD A,H				; Yes, so go onto next third
+146+  8106 D6 08        			SUB 8
+147+  8108 67           			LD H,A
+148+  8109 C9           			RET
+149+  810A
+150+  810A              ; Move HL up one pixel line
+151+  810A              ;
+152+  810A 25           Pixel_Address_Up:	DEC H				; Go up onto the next pixel line
+153+  810B 7C           			LD A,H				; Check if we have gone onto the next character boundary
+154+  810C E6 07        			AND 7
+155+  810E FE 07        			CP 7
+156+  8110 C0           			RET NZ
+157+  8111 7D           			LD A,L
+158+  8112 D6 20        			SUB 32
+159+  8114 6F           			LD L,A
+160+  8115 D8           			RET C
+161+  8116 7C           			LD A,H
+162+  8117 C6 08        			ADD A,8
+163+  8119 67           			LD H,A
+164+  811A C9           			RET
+165+  811B
+166+  811B              ; Print a single BCD value
+167+  811B              ;  A: Character to print
+168+  811B              ; HL: Screen address to print character at
+169+  811B              ;
+170+  811B DD 7E 00     Print_BCD_8		LD A, (IX)
+170+  811E DD 23          INC IX
+170+  8120 CD 38 81       CALL Print_BCD
+171+  8123 DD 7E 00     Print_BCD_6		LD A, (IX)
+171+  8126 DD 23          INC IX
+171+  8128 CD 38 81       CALL Print_BCD
+172+  812B DD 7E 00     Print_BCD_4		LD A, (IX)
+172+  812E DD 23          INC IX
+172+  8130 CD 38 81       CALL Print_BCD
+173+  8133 DD 7E 00     Print_BCD_2		LD A, (IX)
+173+  8136 DD 23          INC IX
+174+  8138 F5           Print_BCD:		PUSH AF				; Store the value
+175+  8139 E6 F0        			AND 0xF0			; Get the top nibble
+176+  813B 1F           			RRA				; Shift into bottom nibble
+177+  813C 1F           			RRA
+178+  813D 1F           			RRA
+179+  813E 1F           			RRA
+180+  813F C6 30        			ADD A, '0'			; Add to ASCII '0'
+181+  8141 CD 54 81     			CALL Print_Char			; Print the character
+182+  8144 2C           			INC L				; Move right one space
+183+  8145 F1           			POP AF
+184+  8146 E6 0F        			AND 0x0F			; Get the bottom nibble
+185+  8148 C6 30        			ADD A, '0'			; Add to ASCII '0'
+186+  814A CD 54 81     			CALL Print_Char			; Print
+187+  814D 2C           			INC L				; Move right one space
+188+  814E C9           			RET
+189+  814F
+190+  814F              ; Print a single character out to an X/Y position
+191+  814F              ;  A: Character to print
+192+  814F              ;  C: X Coordinate
+193+  814F              ;  B: Y Coordinate
+194+  814F              ; DE: Address of character set
+195+  814F              ;
+196+  814F F5           Print_Char_At:		PUSH AF
+197+  8150 CD C1 80     			CALL Get_Char_Address
+198+  8153 F1           			POP AF				; Fall through to Print_Char
+199+  8154              ;
+200+  8154              ; Print a single character out to a screen address
+201+  8154              ;  A:  Character to print
+202+  8154              ;  HL: Screen address to print character at
+203+  8154              ;  DE: Address of character set (if entering at Print_Char_UDG)
+204+  8154              ; No SM code here - needs to be re-enterent if called on interrupt
+205+  8154              ;
+206+  8154 11 00 3C     Print_Char:		LD DE, 0x3C00			; Address of character set in ROM
+207+  8157 E5           			PUSH HL
+208+  8158 06 00        			LD B, 0				; Get index into character set
+209+  815A 4F           			LD C, A
+210+  815B              			DUP 3
+211+  815B CB 21       >			SLA C
+212+  815D CB 10       >			RL B
+211+  815F CB 21       >			SLA C
+212+  8161 CB 10       >			RL B
+211+  8163 CB 21       >			SLA C
+212+  8165 CB 10       >			RL B
+213+  8167              			EDUP
+214+  8167 EB           			EX DE, HL
+215+  8168 09           			ADD HL, BC
+216+  8169 EB           			EX DE, HL
+217+  816A CD 6F 81     			CALL Print_UDG8
+218+  816D E1           			POP HL
+219+  816E C9           			RET
+220+  816F
+221+  816F              ; Print a UDG (Single Height)
+222+  816F              ; DE - Character data
+223+  816F              ; HL - Screen address
+224+  816F              ;
+225+  816F 06 08        Print_UDG8:		LD B,8				; Loop counter
+226+  8171 1A           2:			LD A,(DE)			; Get the byte from the ROM into A
+227+  8172 77           			LD (HL),A			; Stick A onto the screen
+228+  8173 13           			INC DE				; Goto next byte of character
+229+  8174 24           			INC H				; Goto next line on screen
+230+  8175 10 FA        			DJNZ 2B				; Loop around whilst it is Not Zero (NZ)
+231+  8177 C9           			RET
+232+  8178
+# file closed: /Users/martin/gitroot/martin-spectrum/src/../lib/output.z80
+ 23   8178              			include "../lib/screen_buffer.z80"
+# file opened: /Users/martin/gitroot/martin-spectrum/src/../lib/screen_buffer.z80
+  1+  8178              ;
+  2+  8178              ; Title:	ZX Spectrum Screen Buffer Routines
+  3+  8178              ; Author:	Dean Belfield
+  4+  8178              ; Created:	20/08/2011
+  5+  8178              ; Last Updated:	11/04/2020
+  6+  8178              ;
+  7+  8178              ; Requires:
+  8+  8178              ;
+  9+  8178              ; Modinfo:
+ 10+  8178              ;
+ 11+  8178              ; 04/07/2012:	Added Clear_Screen and Clear_Screen_Fast routines
+ 12+  8178              ; 08/02/2020:	Moved Clear_Screen to output.z80
+ 13+  8178              ; 10/04/2020:	Added Get_Pixel_Address_B
+ 14+  8178              ;		Fixed Copy_Screen to copy entire screen width, not just half a screen
+ 15+  8178              ; 11/04/2020:	Get_Pixel_Address_B now only compiled if SCREEN_BUFFER is declared
+ 16+  8178              ;
+ 17+  8178
+ 18+  8178              ; Get screen address (based upon a 32x192 byte buffer where each pixel row is 32 bytes below the previous)
+ 19+  8178              ; Functionally equivalent to Get_Pixel_Address in output.z80 that deals with the Spectrum screen memory
+ 20+  8178              ; B = Y pixel position
+ 21+  8178              ; C = X pixel position
+ 22+  8178              ; Returns address in HL and pixel position within character in A
+ 23+  8178              ;
+ 24+  8178              			IFDEF SCREEN_BUFFER
+ 25+  8178 ~            Get_Pixel_Address_B:	LD L,B				; Calculate Y2,Y1,Y0
+ 26+  8178 ~            			LD H,0
+ 27+  8178 ~            			DUP 5
+ 28+  8178 ~            			ADD HL,HL
+ 29+  8178 ~            			EDUP
+ 30+  8178 ~            			LD A,high SCREEN_BUFFER
+ 31+  8178 ~            			ADD A,H
+ 32+  8178 ~            			LD H,A
+ 33+  8178 ~            			LD A,C				; Calculate X4,X3,X2,X1,X0
+ 34+  8178 ~            			RRA				; Shift into position
+ 35+  8178 ~            			RRA
+ 36+  8178 ~            			RRA
+ 37+  8178 ~            			AND %00011111			; Mask out unwanted bits
+ 38+  8178 ~            			OR L				; OR with Y5,Y4,Y3
+ 39+  8178 ~            			LD L,A				; Store in L
+ 40+  8178 ~            			LD A,C
+ 41+  8178 ~            			AND 7
+ 42+  8178 ~            			RET
+ 43+  8178              			ENDIF
+ 44+  8178
+ 45+  8178              ; Fast clear-screen routine
+ 46+  8178              ; Uses the stack to block clear memory
+ 47+  8178              ; HL: Address of screen buffer
+ 48+  8178              ;
+ 49+  8178 ED 73 A1 81  Clear_Screen_Fast:	LD (Clear_Screen_Fast_End+1),SP	; Store the stack (self modding code)
+ 50+  817C 11 00 18     			LD DE,0x1800
+ 51+  817F 19           			ADD HL,DE			; Move to end of buffer
+ 52+  8180 F9           			LD SP,HL			; Set stack to pointer
+ 53+  8181 11 00 00     			LD DE,0				; We are clearing, so set DE to 0
+ 54+  8184 06 80        			LD B,128			; We loop 128 times - 24 words * 128 = 6144 bytes
+ 55+  8186              1:			DUP 24
+ 56+  8186 D5          >			PUSH DE
+ 56+  8187 D5          >			PUSH DE
+ 56+  8188 D5          >			PUSH DE
+ 56+  8189 D5          >			PUSH DE
+ 56+  818A D5          >			PUSH DE
+ 56+  818B D5          >			PUSH DE
+ 56+  818C D5          >			PUSH DE
+ 56+  818D D5          >			PUSH DE
+ 56+  818E D5          >			PUSH DE
+ 56+  818F D5          >			PUSH DE
+ 56+  8190 D5          >			PUSH DE
+ 56+  8191 D5          >			PUSH DE
+ 56+  8192 D5          >			PUSH DE
+ 56+  8193 D5          >			PUSH DE
+ 56+  8194 D5          >			PUSH DE
+ 56+  8195 D5          >			PUSH DE
+ 56+  8196 D5          >			PUSH DE
+ 56+  8197 D5          >			PUSH DE
+ 56+  8198 D5          >			PUSH DE
+ 56+  8199 D5          >			PUSH DE
+ 56+  819A D5          >			PUSH DE
+ 56+  819B D5          >			PUSH DE
+ 56+  819C D5          >			PUSH DE
+ 56+  819D D5          >			PUSH DE
+ 57+  819E              			EDUP
+ 58+  819E 10 E6        			DJNZ 1B
+ 59+  81A0 31 00 00     Clear_Screen_Fast_End:	LD SP,0x0000			; Restore the stack
+ 60+  81A3 C9           			RET
+ 61+  81A4
+ 62+  81A4              ; A voodoo screen buffer routine that uses the stack to quickly shift bytes around
+ 63+  81A4              ; HL: Location of offscreen buffer
+ 64+  81A4              ;
+ 65+  81A4 ED 73 17 82  Copy_Screen:		LD (Copy_Screen_End+1),SP 	; This is some self-modifying code; stores the stack pointer in an LD SP,nn instruction at the end
+ 66+  81A8 D9           			EXX				; Switch to alternate registers
+ 67+  81A9 21 00 40     			LD HL,0x4000            	; HL' = screen pointer
+ 68+  81AC 22 FC 81     1:			LD (Copy_Screen_HL1+1), HL	; Store the screen position for later
+ 69+  81AF D9           			EXX				; Switch to normal registers
+ 70+  81B0
+ 71+  81B0 F9           			LD SP,HL			; HL = Buffer address
+ 72+  81B1 F1           			POP AF				; Fetch the data
+ 73+  81B2 C1           			POP BC
+ 74+  81B3 D1           			POP DE
+ 75+  81B4 DD E1        			POP IX
+ 76+  81B6 D9           			EXX				; Switch to alternate registers
+ 77+  81B7 08           			EX AF,AF'
+ 78+  81B8 11 10 00     			LD DE,16
+ 79+  81BB 19           			ADD HL,DE			; Add Offset for screen
+ 80+  81BC F1           			POP AF
+ 81+  81BD C1           			POP BC
+ 82+  81BE D1           			POP DE
+ 83+  81BF FD E1        			POP IY
+ 84+  81C1 ED 73 D3 81  			LD (Copy_Screen_SP1+1),SP	; Save the current buffer address for later
+ 85+  81C5 F9           			LD SP,HL			; The screen address
+ 86+  81C6 FD E5        			PUSH IY				; Push the data
+ 87+  81C8 D5           			PUSH DE
+ 88+  81C9 C5           			PUSH BC
+ 89+  81CA F5           			PUSH AF
+ 90+  81CB 08           			EX AF,AF'			; Switch to normal registers
+ 91+  81CC D9           			EXX
+ 92+  81CD DD E5        			PUSH IX
+ 93+  81CF D5           			PUSH DE
+ 94+  81D0 C5           			PUSH BC
+ 95+  81D1 F5           			PUSH AF
+ 96+  81D2 21 00 00     Copy_Screen_SP1:	LD HL,0				; HL = Buffer
+ 97+  81D5
+ 98+  81D5 F9           			LD SP,HL			; HL = Buffer address
+ 99+  81D6 F1           			POP AF				; Fetch the data
+100+  81D7 C1           			POP BC
+101+  81D8 D1           			POP DE
+102+  81D9 DD E1        			POP IX
+103+  81DB D9           			EXX				; Switch to alternate registers
+104+  81DC 08           			EX AF,AF'
+105+  81DD 11 10 00     			LD DE,16
+106+  81E0 19           			ADD HL,DE			; Add Offset for screen
+107+  81E1 F1           			POP AF
+108+  81E2 C1           			POP BC
+109+  81E3 D1           			POP DE
+110+  81E4 FD E1        			POP IY
+111+  81E6 ED 73 F8 81  			LD (Copy_Screen_SP2+1),SP	; Save the current buffer address for later
+112+  81EA F9           			LD SP,HL			; The screen address
+113+  81EB FD E5        			PUSH IY				; Push the data
+114+  81ED D5           			PUSH DE
+115+  81EE C5           			PUSH BC
+116+  81EF F5           			PUSH AF
+117+  81F0 08           			EX AF,AF'			; Switch to normal registers
+118+  81F1 D9           			EXX
+119+  81F2 DD E5        			PUSH IX
+120+  81F4 D5           			PUSH DE
+121+  81F5 C5           			PUSH BC
+122+  81F6 F5           			PUSH AF
+123+  81F7 21 00 00     Copy_Screen_SP2:	LD HL,0				; HL = Buffer
+124+  81FA
+125+  81FA D9           			EXX				; Switch to alternate registers
+126+  81FB 21 00 00     Copy_Screen_HL1:	LD HL,0				; HL' = Screen
+127+  81FE 24           			INC H				; Drop down 1 pixel row in screen memory
+128+  81FF 7C           			LD A,H				; Check whether we've gone past a character boundary
+129+  8200 E6 07        			AND 0x07
+130+  8202 20 A8        			JR NZ,1B
+131+  8204 7C           			LD A,H				; Go to the next character line
+132+  8205 D6 08        			SUB 8
+133+  8207 67           			LD H,A
+134+  8208 7D           			ld A,L
+135+  8209 C6 20        			ADD A,32
+136+  820B 6F           			LD L,A
+137+  820C 30 9E        			JR NC,1B			; Check for next third
+138+  820E 7C           			LD A,H				; Go to next third
+139+  820F C6 08        			ADD A,8
+140+  8211 67           			LD H,A
+141+  8212 FE 58        			CP 0x58				; Check for end of screen memory
+142+  8214 20 96        			JR NZ,1B			; Loop back if not reached
+143+  8216
+144+  8216 31 00 00     Copy_Screen_End:	LD SP,0				; Restore the SP
+145+  8219 D9           			EXX				; Switch to normal registers
+146+  821A C9           			RET
+147+  821B
+# file closed: /Users/martin/gitroot/martin-spectrum/src/../lib/screen_buffer.z80
+ 24   821B              			include "../lib/sound.z80"
+# file opened: /Users/martin/gitroot/martin-spectrum/src/../lib/sound.z80
+  1+  821B              ;
+  2+  821B              ; Title:	ZX Spectrum 48K Sound Routines
+  3+  821B              ; Author:	Dean Belfield
+  4+  821B              ; Created:	11/08/2011
+  5+  821B              ; Last Updated:	11/08/2011
+  6+  821B              ;
+  7+  821B              ; Requires:
+  8+  821B              ;
+  9+  821B              ; Modinfo:
+ 10+  821B              ;
+ 11+  821B
+ 12+  821B              ; Call this every time you want to initialise a sound effect
+ 13+  821B              ; A = Variable 1
+ 14+  821B              ; B = Variable 2
+ 15+  821B              ; C = Duration of overall sound effect
+ 16+  821B              ; D = Duration of each step of the sound effect
+ 17+  821B              ;
+ 18+  821B 32 42 82     SoundFX_A_Init:		LD (SoundFX_A_V2+1),A
+ 19+  821E 78           			LD A,B
+ 20+  821F 32 4B 82     			LD (SoundFX_A_V3+1),A
+ 21+  8222 79           			LD A,C
+ 22+  8223 32 30 82     			LD (SoundFX_A_Main+1),A
+ 23+  8226 7A           			LD A,D
+ 24+  8227 32 37 82     			LD (SoundFX_A_V1+1),A
+ 25+  822A AF           			XOR A
+ 26+  822B 32 54 82     			LD (SoundFX_A_V4),A
+ 27+  822E C9           			RET
+ 28+  822F
+ 29+  822F              ; Call this during your main loop
+ 30+  822F              ; It will play one step of the sound effect each pass
+ 31+  822F              ; until the complete sound effect has finished
+ 32+  822F              ;
+ 33+  822F 3E 00        SoundFX_A_Main:		LD A,0
+ 34+  8231 3D           			DEC A
+ 35+  8232 C8           			RET Z
+ 36+  8233 32 30 82     			LD (SoundFX_A_Main+1),A
+ 37+  8236 06 00        SoundFX_A_V1:		LD B,0
+ 38+  8238 21 54 82     			LD HL,SoundFX_A_V4
+ 39+  823B 48           SoundFX_A_L1:		LD C,B
+ 40+  823C 3E 08        			LD A,%00001000
+ 41+  823E D3 FE        			OUT (254),A
+ 42+  8240 7E           			LD A,(HL)
+ 43+  8241 EE 00        SoundFX_A_V2:		XOR 0
+ 44+  8243 47           			LD B,A
+ 45+  8244 10 FE        			DJNZ $
+ 46+  8246 AF           			XOR A
+ 47+  8247 D3 FE        			OUT (254),A
+ 48+  8249 7E           			LD A,(HL)
+ 49+  824A EE 00        SoundFX_A_V3:		XOR 0
+ 50+  824C 47           			LD B,A
+ 51+  824D 10 FE        			DJNZ $
+ 52+  824F 35           			DEC (HL)
+ 53+  8250 41           			LD B,C
+ 54+  8251 10 E8        			DJNZ SoundFX_A_L1
+ 55+  8253 C9           			RET
+ 56+  8254
+ 57+  8254 00           SoundFX_A_V4:		DEFB 0
+ 58+  8255
+ 59+  8255
+# file closed: /Users/martin/gitroot/martin-spectrum/src/../lib/sound.z80
+ 25   8255              			include "../lib/sprite.z80"
+# file opened: /Users/martin/gitroot/martin-spectrum/src/../lib/sprite.z80
+  1+  8255              ;
+  2+  8255              ; Title:	ZX Spectrum 48K Sprite Routines
+  3+  8255              ; Author:	Dean Belfield
+  4+  8255              ; Created:	20/08/2011
+  5+  8255              ; Last Updated:	02/07/2012
+  6+  8255              ;
+  7+  8255              ; Requires:	output.asm
+  8+  8255              ;
+  9+  8255              ; Modinfo:
+ 10+  8255              ;
+ 11+  8255              ; Subroutines Render_Sprites and Clear_Sprites now call Pixel_Address_Down for sake of readability
+ 12+  8255              ;
+ 13+  8255
+ 14+  8255              ; This routine goes through the sprite logic table and runs the logic routine for each sprite
+ 15+  8255              ;
+ 16+  8255 DD 21 EA 82  Handle_Sprites: 	LD IX,Sprite_Data			; The sprite data block
+ 17+  8259 06 0D        			LD B,Sprite_Max				; The number of sprites to handle
+ 18+  825B DD 7E 06     Handle_Sprites_1:	ld A,(IX+Sprite_Logic+1)		; Get the high address of the handler routine
+ 19+  825E A7           			AND A					; If it is zero
+ 20+  825F 28 1B        			JR Z,Handle_Sprites_3			; Then don't process the sprite
+ 21+  8261 21 79 82     			LD HL,Handle_Sprites_2			; Set to the return address
+ 22+  8264 C5           			PUSH BC					; Push the loop counter
+ 23+  8265 DD E5        			PUSH IX					; Push the index register
+ 24+  8267 E5           			PUSH HL					; Push the return address (to simulate a call)
+ 25+  8268 67           			LD H,A					; Set H to the previously fetched high address of handler routine
+ 26+  8269 DD 6E 05     			LD L,(IX+Sprite_Logic)			; Fetch the low address of the handler routine
+ 27+  826C DD 7E 01     			LD A,(IX+Sprite_X)			; Store the current X and Y coordinates (for erase routine)
+ 28+  826F DD 77 08     			LD (IX+Sprite_X_Old),A
+ 29+  8272 DD 7E 02     			LD A,(IX+Sprite_Y)
+ 30+  8275 DD 77 09     			LD (IX+Sprite_Y_Old),A
+ 31+  8278 E9           			JP (HL)					; Jump to the handler. Return address is stacked, so RET from that routine
+ 32+  8279 DD E1        Handle_Sprites_2:	POP IX					; This is the return address, so pop the index register
+ 33+  827B C1           			POP BC					; Pop the loop counter
+ 34+  827C 11 0A 00     Handle_Sprites_3:	LD DE,Sprite_Data_Block_Size		; Go to next sprite data block
+ 35+  827F DD 19        			ADD IX,DE
+ 36+  8281 10 D8        			DJNZ Handle_Sprites_1			; Loop until all sprites have been processed
+ 37+  8283 C9           			RET
+ 38+  8284
+ 39+  8284              ; This routine renders the sprites
+ 40+  8284              ; It's a bit of a work-in-progress but clears each sprite in turn before drawing it in the new position
+ 41+  8284              ; HL = Address of sprite definition table
+ 42+  8284              ;
+ 43+  8284 22 A4 82     Render_Sprites:		LD (Render_Sprites_SM1+1),HL		; Store sprite definition table for later...
+ 44+  8287 DD 21 EA 82  			LD IX,Sprite_Data
+ 45+  828B 06 0D        			LD B,Sprite_Max
+ 46+  828D DD 7E 06     Render_Sprites_1:	LD A,(IX+Sprite_Logic+1)
+ 47+  8290 A7           			AND A
+ 48+  8291 28 17        			JR Z,Render_Sprites_2
+ 49+  8293 C5           			PUSH BC
+ 50+  8294 DD 46 09     			LD B,(IX+Sprite_Y_Old)
+ 51+  8297 DD 4E 08     			LD C,(IX+Sprite_X_Old)
+ 52+  829A CD D7 82     			CALL Clear_Sprite
+ 53+  829D DD 46 02     			LD B,(IX+Sprite_Y)
+ 54+  82A0 DD 4E 01     			LD C,(IX+Sprite_X)
+ 55+  82A3 11 00 00     Render_Sprites_SM1:	LD DE,0
+ 56+  82A6 CD B2 82     			CALL Render_Sprite
+ 57+  82A9 C1           			POP BC
+ 58+  82AA 11 0A 00     Render_Sprites_2:	LD DE,Sprite_Data_Block_Size
+ 59+  82AD DD 19        			ADD IX,DE
+ 60+  82AF 10 DC        			DJNZ Render_Sprites_1
+ 61+  82B1 C9           			RET
+ 62+  82B2
+ 63+  82B2              ; This routine draws a single sprite; again, work in progress. No off-screen clipping or masking yet
+ 64+  82B2              ; B = Y pixel position
+ 65+  82B2              ; C = X pixel position
+ 66+  82B2              ; DE = Address of sprite table (8 words; one word per pre-shifted sprite definition)
+ 67+  82B2              ;
+ 68+  82B2 CD DB 80     Render_Sprite:		CALL Get_Pixel_Address			; This routine is in output.asm
+ 69+  82B5 E5           			PUSH HL					; Store screen address temporarily
+ 70+  82B6 26 00        			LD H,0					; Multiply pixel shift by 2
+ 71+  82B8 6F           			LD L,A
+ 72+  82B9 29           			ADD HL,HL				; I think this is quicker than shifting L and H
+ 73+  82BA 19           			ADD HL,DE				; Add base address of sprite table
+ 74+  82BB 5E           			LD E,(HL)				; Get sprite definition address
+ 75+  82BC 23           			INC HL
+ 76+  82BD 56           			LD D,(HL)
+ 77+  82BE E1           			POP HL					; Get screen address back
+ 78+  82BF 06 10        			LD B,16					; Height of sprite, in pixels
+ 79+  82C1 1A           Render_Sprite_1:	LD A,(DE)				; Fetch sprite definition
+ 80+  82C2 B6           			OR (HL)					; OR with contents of screen
+ 81+  82C3 77           			LD (HL),A				; Write back to screen
+ 82+  82C4 13           			INC DE					; Next byte of sprite definition
+ 83+  82C5 2C           			INC L					; Next byte of screen memory
+ 84+  82C6 1A           			LD A,(DE)				; Fetch and write again...
+ 85+  82C7 B6           			OR (HL)
+ 86+  82C8 77           			LD (HL),A
+ 87+  82C9 13           			INC DE
+ 88+  82CA 2C           			INC L
+ 89+  82CB 1A           			LD A,(DE)				; And again...
+ 90+  82CC B6           			OR (HL)
+ 91+  82CD 77           			LD (HL),A
+ 92+  82CE 13           			INC DE
+ 93+  82CF 2D           			DEC L					; Go back to original screen address
+ 94+  82D0 2D           			DEC L
+ 95+  82D1 CD FB 80     			CALL Pixel_Address_Down
+ 96+  82D4 10 EB        Render_Sprite_2:	DJNZ Render_Sprite_1
+ 97+  82D6 C9           			RET
+ 98+  82D7
+ 99+  82D7              ; Clear a single sprite
+100+  82D7              ; B = Y pixel position
+101+  82D7              ; C = X pixel position
+102+  82D7              ;
+103+  82D7 CD DB 80     Clear_Sprite:		CALL Get_Pixel_Address			; This routine is in output.asm
+104+  82DA 06 10        			LD B,16					; Height of sprite, in pixels
+105+  82DC AF           Clear_Sprite_1		XOR A					; Clear A
+106+  82DD 77           			LD (HL),A				; Write 3 0's to line
+107+  82DE 2C           			INC L
+108+  82DF 77           			LD (HL),A
+109+  82E0 2C           			INC L
+110+  82E1 77           			LD (HL),A
+111+  82E2 2D           			DEC L					; Go back to original screen address
+112+  82E3 2D           			DEC L
+113+  82E4 CD FB 80     			CALL Pixel_Address_Down
+114+  82E7 10 F3        Clear_Sprite_2:		DJNZ Clear_Sprite_1
+115+  82E9 C9           			RET
+116+  82EA
+117+  82EA              Sprite_Image:		EQU 0x00
+118+  82EA              Sprite_X:		EQU 0x01
+119+  82EA              Sprite_Y:		EQU 0x02
+120+  82EA              Sprite_w:		EQU 0x03
+121+  82EA              Sprite_H:		EQU 0x04
+122+  82EA              Sprite_Logic:		EQU 0x05
+123+  82EA              Sprite_Flags:		EQU 0x07
+124+  82EA              Sprite_X_Old:		EQU 0x08
+125+  82EA              Sprite_Y_Old:		EQU 0x09
+126+  82EA
+127+  82EA              Sprite_Data_Block_Size:	EQU 0x0A
+128+  82EA              Sprite_Max:		EQU 0x0D
+129+  82EA
+130+  82EA 00 00 00...  Sprite_Data:		DEFS (Sprite_Max * Sprite_Data_Block_Size), 0
+131+  836C
+# file closed: /Users/martin/gitroot/martin-spectrum/src/../lib/sprite.z80
+ 26   836C              			include "../lib/math.z80"
+# file opened: /Users/martin/gitroot/martin-spectrum/src/../lib/math.z80
+  1+  836C              ;
+  2+  836C              ; Title:	ZX Spectrum Math Routines
+  3+  836C              ; Author:	Dean Belfield
+  4+  836C              ; Created:	22/08/2011
+  5+  836C              ; Last Updated:	08/04/2020
+  6+  836C              ;
+  7+  836C              ; Requires:
+  8+  836C              ;
+  9+  836C              ; Modinfo:
+ 10+  836C              ;
+ 11+  836C              ; 08/04/2020:	Added 8, 16 and 24 bit multiply, 16 and 24 bit divide, and 32 bit square root
+ 12+  836C
+ 13+  836C              ; The tables - these must be on a page boundary
+ 14+  836C              ;
+ 15+  836C 00 00 00...  			ALIGN 0x100
+ 16+  8400
+ 17+  8400              QMULTABL		LUA ALLPASS
+ 18+  8400 ~            			for i = 0, 255, 16 do
+ 19+  8400 ~            				s = ""
+ 20+  8400 ~            				sep = " 0x"
+ 21+  8400 ~            				for j = i, i+15 do
+ 22+  8400 ~            					h = math.floor((j * j) / 256)
+ 23+  8400 ~            					l = (j * j) - (h * 256)
+ 24+  8400 ~            					s = s .. string.format("%s%02X", sep, l)
+ 25+  8400 ~            					sep = ",0x"
+ 26+  8400 ~            				end
+ 27+  8400 ~            				_pc("DB " .. s)
+ 28+  8400 ~            			end
+ 29+  8400 00 01 04 09  DB  0x00,0x01,0x04,0x09,0x10,0x19,0x24,0x31,0x40,0x51,0x64,0x79,0x90,0xA9,0xC4,0xE1
+ 29+  8404 10 19 24 31
+ 29+  8408 40 51 64 79
+ 29+  840C 90 A9 C4 E1
+ 29+  8410 00 21 44 69  DB  0x00,0x21,0x44,0x69,0x90,0xB9,0xE4,0x11,0x40,0x71,0xA4,0xD9,0x10,0x49,0x84,0xC1
+ 29+  8414 90 B9 E4 11
+ 29+  8418 40 71 A4 D9
+ 29+  841C 10 49 84 C1
+ 29+  8420 00 41 84 C9  DB  0x00,0x41,0x84,0xC9,0x10,0x59,0xA4,0xF1,0x40,0x91,0xE4,0x39,0x90,0xE9,0x44,0xA1
+ 29+  8424 10 59 A4 F1
+ 29+  8428 40 91 E4 39
+ 29+  842C 90 E9 44 A1
+ 29+  8430 00 61 C4 29  DB  0x00,0x61,0xC4,0x29,0x90,0xF9,0x64,0xD1,0x40,0xB1,0x24,0x99,0x10,0x89,0x04,0x81
+ 29+  8434 90 F9 64 D1
+ 29+  8438 40 B1 24 99
+ 29+  843C 10 89 04 81
+ 29+  8440 00 81 04 89  DB  0x00,0x81,0x04,0x89,0x10,0x99,0x24,0xB1,0x40,0xD1,0x64,0xF9,0x90,0x29,0xC4,0x61
+ 29+  8444 10 99 24 B1
+ 29+  8448 40 D1 64 F9
+ 29+  844C 90 29 C4 61
+ 29+  8450 00 A1 44 E9  DB  0x00,0xA1,0x44,0xE9,0x90,0x39,0xE4,0x91,0x40,0xF1,0xA4,0x59,0x10,0xC9,0x84,0x41
+ 29+  8454 90 39 E4 91
+ 29+  8458 40 F1 A4 59
+ 29+  845C 10 C9 84 41
+ 29+  8460 00 C1 84 49  DB  0x00,0xC1,0x84,0x49,0x10,0xD9,0xA4,0x71,0x40,0x11,0xE4,0xB9,0x90,0x69,0x44,0x21
+ 29+  8464 10 D9 A4 71
+ 29+  8468 40 11 E4 B9
+ 29+  846C 90 69 44 21
+ 29+  8470 00 E1 C4 A9  DB  0x00,0xE1,0xC4,0xA9,0x90,0x79,0x64,0x51,0x40,0x31,0x24,0x19,0x10,0x09,0x04,0x01
+ 29+  8474 90 79 64 51
+ 29+  8478 40 31 24 19
+ 29+  847C 10 09 04 01
+ 29+  8480 00 01 04 09  DB  0x00,0x01,0x04,0x09,0x10,0x19,0x24,0x31,0x40,0x51,0x64,0x79,0x90,0xA9,0xC4,0xE1
+ 29+  8484 10 19 24 31
+ 29+  8488 40 51 64 79
+ 29+  848C 90 A9 C4 E1
+ 29+  8490 00 21 44 69  DB  0x00,0x21,0x44,0x69,0x90,0xB9,0xE4,0x11,0x40,0x71,0xA4,0xD9,0x10,0x49,0x84,0xC1
+ 29+  8494 90 B9 E4 11
+ 29+  8498 40 71 A4 D9
+ 29+  849C 10 49 84 C1
+ 29+  84A0 00 41 84 C9  DB  0x00,0x41,0x84,0xC9,0x10,0x59,0xA4,0xF1,0x40,0x91,0xE4,0x39,0x90,0xE9,0x44,0xA1
+ 29+  84A4 10 59 A4 F1
+ 29+  84A8 40 91 E4 39
+ 29+  84AC 90 E9 44 A1
+ 29+  84B0 00 61 C4 29  DB  0x00,0x61,0xC4,0x29,0x90,0xF9,0x64,0xD1,0x40,0xB1,0x24,0x99,0x10,0x89,0x04,0x81
+ 29+  84B4 90 F9 64 D1
+ 29+  84B8 40 B1 24 99
+ 29+  84BC 10 89 04 81
+ 29+  84C0 00 81 04 89  DB  0x00,0x81,0x04,0x89,0x10,0x99,0x24,0xB1,0x40,0xD1,0x64,0xF9,0x90,0x29,0xC4,0x61
+ 29+  84C4 10 99 24 B1
+ 29+  84C8 40 D1 64 F9
+ 29+  84CC 90 29 C4 61
+ 29+  84D0 00 A1 44 E9  DB  0x00,0xA1,0x44,0xE9,0x90,0x39,0xE4,0x91,0x40,0xF1,0xA4,0x59,0x10,0xC9,0x84,0x41
+ 29+  84D4 90 39 E4 91
+ 29+  84D8 40 F1 A4 59
+ 29+  84DC 10 C9 84 41
+ 29+  84E0 00 C1 84 49  DB  0x00,0xC1,0x84,0x49,0x10,0xD9,0xA4,0x71,0x40,0x11,0xE4,0xB9,0x90,0x69,0x44,0x21
+ 29+  84E4 10 D9 A4 71
+ 29+  84E8 40 11 E4 B9
+ 29+  84EC 90 69 44 21
+ 29+  84F0 00 E1 C4 A9  DB  0x00,0xE1,0xC4,0xA9,0x90,0x79,0x64,0x51,0x40,0x31,0x24,0x19,0x10,0x09,0x04,0x01
+ 29+  84F4 90 79 64 51
+ 29+  84F8 40 31 24 19
+ 29+  84FC 10 09 04 01
+ 29+  8500              			ENDLUA
+ 30+  8500
+ 31+  8500              QMULTABH:		LUA ALLPASS
+ 32+  8500 ~            			for i = 0, 255, 16 do
+ 33+  8500 ~            				s = ""
+ 34+  8500 ~            				sep = " 0x"
+ 35+  8500 ~            				for j = i, i+15 do
+ 36+  8500 ~            					h = math.floor((j * j) / 256)
+ 37+  8500 ~            					l = (j * j) - (h * 256)
+ 38+  8500 ~            					s = s .. string.format("%s%02X", sep, h)
+ 39+  8500 ~            					sep = ",0x"
+ 40+  8500 ~            				end
+ 41+  8500 ~            				_pc("DB " .. s)
+ 42+  8500 ~            			end
+ 43+  8500 00 00 00 00  DB  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+ 43+  8504 00 00 00 00
+ 43+  8508 00 00 00 00
+ 43+  850C 00 00 00 00
+ 43+  8510 01 01 01 01  DB  0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x03,0x03,0x03,0x03
+ 43+  8514 01 01 01 02
+ 43+  8518 02 02 02 02
+ 43+  851C 03 03 03 03
+ 43+  8520 04 04 04 04  DB  0x04,0x04,0x04,0x04,0x05,0x05,0x05,0x05,0x06,0x06,0x06,0x07,0x07,0x07,0x08,0x08
+ 43+  8524 05 05 05 05
+ 43+  8528 06 06 06 07
+ 43+  852C 07 07 08 08
+ 43+  8530 09 09 09 0A  DB  0x09,0x09,0x09,0x0A,0x0A,0x0A,0x0B,0x0B,0x0C,0x0C,0x0D,0x0D,0x0E,0x0E,0x0F,0x0F
+ 43+  8534 0A 0A 0B 0B
+ 43+  8538 0C 0C 0D 0D
+ 43+  853C 0E 0E 0F 0F
+ 43+  8540 10 10 11 11  DB  0x10,0x10,0x11,0x11,0x12,0x12,0x13,0x13,0x14,0x14,0x15,0x15,0x16,0x17,0x17,0x18
+ 43+  8544 12 12 13 13
+ 43+  8548 14 14 15 15
+ 43+  854C 16 17 17 18
+ 43+  8550 19 19 1A 1A  DB  0x19,0x19,0x1A,0x1A,0x1B,0x1C,0x1C,0x1D,0x1E,0x1E,0x1F,0x20,0x21,0x21,0x22,0x23
+ 43+  8554 1B 1C 1C 1D
+ 43+  8558 1E 1E 1F 20
+ 43+  855C 21 21 22 23
+ 43+  8560 24 24 25 26  DB  0x24,0x24,0x25,0x26,0x27,0x27,0x28,0x29,0x2A,0x2B,0x2B,0x2C,0x2D,0x2E,0x2F,0x30
+ 43+  8564 27 27 28 29
+ 43+  8568 2A 2B 2B 2C
+ 43+  856C 2D 2E 2F 30
+ 43+  8570 31 31 32 33  DB  0x31,0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0x3A,0x3B,0x3C,0x3D,0x3E,0x3F
+ 43+  8574 34 35 36 37
+ 43+  8578 38 39 3A 3B
+ 43+  857C 3C 3D 3E 3F
+ 43+  8580 40 41 42 43  DB  0x40,0x41,0x42,0x43,0x44,0x45,0x46,0x47,0x48,0x49,0x4A,0x4B,0x4C,0x4D,0x4E,0x4F
+ 43+  8584 44 45 46 47
+ 43+  8588 48 49 4A 4B
+ 43+  858C 4C 4D 4E 4F
+ 43+  8590 51 52 53 54  DB  0x51,0x52,0x53,0x54,0x55,0x56,0x57,0x59,0x5A,0x5B,0x5C,0x5D,0x5F,0x60,0x61,0x62
+ 43+  8594 55 56 57 59
+ 43+  8598 5A 5B 5C 5D
+ 43+  859C 5F 60 61 62
+ 43+  85A0 64 65 66 67  DB  0x64,0x65,0x66,0x67,0x69,0x6A,0x6B,0x6C,0x6E,0x6F,0x70,0x72,0x73,0x74,0x76,0x77
+ 43+  85A4 69 6A 6B 6C
+ 43+  85A8 6E 6F 70 72
+ 43+  85AC 73 74 76 77
+ 43+  85B0 79 7A 7B 7D  DB  0x79,0x7A,0x7B,0x7D,0x7E,0x7F,0x81,0x82,0x84,0x85,0x87,0x88,0x8A,0x8B,0x8D,0x8E
+ 43+  85B4 7E 7F 81 82
+ 43+  85B8 84 85 87 88
+ 43+  85BC 8A 8B 8D 8E
+ 43+  85C0 90 91 93 94  DB  0x90,0x91,0x93,0x94,0x96,0x97,0x99,0x9A,0x9C,0x9D,0x9F,0xA0,0xA2,0xA4,0xA5,0xA7
+ 43+  85C4 96 97 99 9A
+ 43+  85C8 9C 9D 9F A0
+ 43+  85CC A2 A4 A5 A7
+ 43+  85D0 A9 AA AC AD  DB  0xA9,0xAA,0xAC,0xAD,0xAF,0xB1,0xB2,0xB4,0xB6,0xB7,0xB9,0xBB,0xBD,0xBE,0xC0,0xC2
+ 43+  85D4 AF B1 B2 B4
+ 43+  85D8 B6 B7 B9 BB
+ 43+  85DC BD BE C0 C2
+ 43+  85E0 C4 C5 C7 C9  DB  0xC4,0xC5,0xC7,0xC9,0xCB,0xCC,0xCE,0xD0,0xD2,0xD4,0xD5,0xD7,0xD9,0xDB,0xDD,0xDF
+ 43+  85E4 CB CC CE D0
+ 43+  85E8 D2 D4 D5 D7
+ 43+  85EC D9 DB DD DF
+ 43+  85F0 E1 E2 E4 E6  DB  0xE1,0xE2,0xE4,0xE6,0xE8,0xEA,0xEC,0xEE,0xF0,0xF2,0xF4,0xF6,0xF8,0xFA,0xFC,0xFE
+ 43+  85F4 E8 EA EC EE
+ 43+  85F8 F0 F2 F4 F6
+ 43+  85FC F8 FA FC FE
+ 43+  8600              			ENDLUA
+ 44+  8600
+ 45+  8600              ; 8-bit unsigned quick multiply, with divide by 256 and negative result
+ 46+  8600              ; Returns A=-(B*C)/256
+ 47+  8600              ;
+ 48+  8600 CD 06 86     MUL8_DIV256_NEG:	CALL MUL8_DIV256
+ 49+  8603 ED 44        			NEG
+ 50+  8605 C9           			RET
+ 51+  8606
+ 52+  8606              ; 8-bit unsigned quick multiply, with divide by 256
+ 53+  8606              ; Returns A=(B*C)/256
+ 54+  8606              ;
+ 55+  8606 26 85        MUL8_DIV256:		LD H,high QMULTABH
+ 56+  8608 78           		 	LD A,B
+ 57+  8609 91           			SUB C
+ 58+  860A 30 0B        			JR NC,1F
+ 59+  860C ED 44        			NEG
+ 60+  860E CB 3F        			SRL A
+ 61+  8610 4F           			LD C,A
+ 62+  8611 80           			ADD A,B
+ 63+  8612 6F           			LD L,A
+ 64+  8613 7E           			LD A,(HL)
+ 65+  8614 69           			LD L,C
+ 66+  8615 96           			SUB (HL)
+ 67+  8616 C9           			RET
+ 68+  8617 CB 3F        1:			SRL A
+ 69+  8619 47           			LD B,A
+ 70+  861A 81           			ADD A,C
+ 71+  861B 6F           			LD L,A
+ 72+  861C 7E           			LD A,(HL)
+ 73+  861D 68           			LD L,B
+ 74+  861E 96           			SUB (HL)
+ 75+  861F C9           			RET
+ 76+  8620
+ 77+  8620              ; 16-bit signed multiply
+ 78+  8620              ; Returns BC=D*E
+ 79+  8620              ; Main entry point: QMUL16S
+ 80+  8620              ;
+ 81+  8620 7A           1:			LD A,D
+ 82+  8621 ED 44        			NEG
+ 83+  8623 57           			LD D,A
+ 84+  8624 CB 7B        			BIT 7,E
+ 85+  8626 28 12        			JR Z,MUL16_NEG
+ 86+  8628 7B           			LD A,E
+ 87+  8629 ED 44        			NEG
+ 88+  862B 5F           			LD E,A
+ 89+  862C 18 17        			JR MUL16
+ 90+  862E CB 7A        MUL16S:			BIT 7,D
+ 91+  8630 20 EE        			JR NZ,1B
+ 92+  8632 CB 7B        			BIT 7,E
+ 93+  8634 28 0F        			JR Z,MUL16
+ 94+  8636 7B           			LD A,E
+ 95+  8637 ED 44        			NEG
+ 96+  8639 5F           			LD E,A
+ 97+  863A
+ 98+  863A              ; 16-bit unsigned multiply with negative result
+ 99+  863A              ; Returns BC=D*E
+100+  863A              ;
+101+  863A CD 45 86     MUL16_NEG:		CALL MUL16
+102+  863D AF           			XOR A
+103+  863E 67           			LD H,A
+104+  863F 6F           			LD L,A
+105+  8640 ED 42        			SBC HL,BC
+106+  8642 44           			LD B,H
+107+  8643 4D           			LD C,L
+108+  8644 C9           			RET
+109+  8645
+110+  8645              ; 16-bit unsigned multiply
+111+  8645              ; Returns BC=D*E
+112+  8645              ;
+113+  8645 26 84        MUL16:			LD H,high QMULTABL
+114+  8647 7A           			LD A,D
+115+  8648 93           			SUB E
+116+  8649 38 26        			JR C, 2F
+117+  864B CB 3F        			SRL A
+118+  864D 47           			LD B,A
+119+  864E 38 0E        			JR C, 1F
+120+  8650 83           			ADD A,E
+121+  8651 4F           			LD C,A
+122+  8652 69           			LD L,C
+123+  8653 7E           			LD A,(HL)
+124+  8654 68           			LD L,B
+125+  8655 96           			SUB (HL)
+126+  8656 69           			LD L,C
+127+  8657 4F           			LD C,A
+128+  8658 24           			INC H
+129+  8659 7E           			LD A,(HL)
+130+  865A 68           			LD L,B
+131+  865B 9E           			SBC A,(HL)
+132+  865C 47           			LD B,A
+133+  865D C9           			RET
+134+  865E 83           1:			ADD A,E
+135+  865F 4F           			LD C,A
+136+  8660 69           			LD L,C
+137+  8661 7E           			LD A,(HL)
+138+  8662 68           			LD L,B
+139+  8663 96           			SUB (HL)
+140+  8664 69           			LD L,C
+141+  8665 4F           			LD C,A
+142+  8666 24           			INC H
+143+  8667 7E           			LD A,(HL)
+144+  8668 68           			LD L,B
+145+  8669 9E           			SBC A,(HL)
+146+  866A 47           			LD B,A
+147+  866B 79           			LD A,C
+148+  866C 83           			ADD A,E
+149+  866D 4F           			LD C,A
+150+  866E D0           			RET NC
+151+  866F 04           			INC B
+152+  8670 C9           			RET
+153+  8671 ED 44        2:			NEG
+154+  8673 CB 3F        			SRL A
+155+  8675 47           			LD B,A
+156+  8676 38 0E        			JR C,3F
+157+  8678 82           			ADD A,D
+158+  8679 4F           			LD C,A
+159+  867A 69           			LD L,C
+160+  867B 7E           			LD A,(HL)
+161+  867C 68           			LD L,B
+162+  867D 96           			SUB (HL)
+163+  867E 69           			LD L,C
+164+  867F 4F           			LD C,A
+165+  8680 24           			INC H
+166+  8681 7E           			LD A,(HL)
+167+  8682 68           			LD L,B
+168+  8683 9E           			SBC A,(HL)
+169+  8684 47           			LD B,A
+170+  8685 C9           			RET
+171+  8686 82           3:			ADD A,D
+172+  8687 4F           			LD C,A
+173+  8688 69           			LD L,C
+174+  8689 7E           			LD A,(HL)
+175+  868A 68           			LD L,B
+176+  868B 96           			SUB (HL)
+177+  868C 69           			LD L,C
+178+  868D 4F           			LD C,A
+179+  868E 24           			INC H
+180+  868F 7E           			LD A,(HL)
+181+  8690 68           			LD L,B
+182+  8691 9E           			SBC A,(HL)
+183+  8692 47           			LD B,A
+184+  8693 79           			LD A,C
+185+  8694 82           			ADD A,D
+186+  8695 4F           			LD C,A
+187+  8696 D0           			RET NC
+188+  8697 04           			INC B
+189+  8698 C9           			RET
+190+  8699
+191+  8699              ; Same as MUL24, but the answer is negative
+192+  8699              ; AHL=-(DE*BC)
+193+  8699              ;
+194+  8699 CD A8 86     MUL24_NEG:		CALL MUL24
+195+  869C EE FF        			XOR 255
+196+  869E EB           			EX DE,HL
+197+  869F 21 00 00     			LD HL,0
+198+  86A2 ED 52        			SBC HL, DE
+199+  86A4 3F           			CCF
+200+  86A5 CE 00        			ADC A,0
+201+  86A7 C9           			RET
+202+  86A8
+203+  86A8              ; Multiply (24 bit)
+204+  86A8              ; AHL=DE*BC
+205+  86A8              ;
+206+  86A8 AF           MUL24:			XOR A
+207+  86A9 67           			LD H,A
+208+  86AA 6F           			LD L,A
+209+  86AB 08           			EX AF,AF
+210+  86AC 3E 10        			LD A,16
+211+  86AE 08           1:			EX AF,AF
+212+  86AF 29           			ADD HL,HL
+213+  86B0 17           			RLA
+214+  86B1 CB 11        			RL C
+215+  86B3 CB 10        			RL B
+216+  86B5 30 03        			JR NC, 2F
+217+  86B7 19           			ADD HL,DE
+218+  86B8 CE 00        			ADC A,0
+219+  86BA 08           2:			EX AF,AF
+220+  86BB 3D           			DEC A
+221+  86BC 20 F0        			JR NZ,1B
+222+  86BE 08           			EX AF,AF
+223+  86BF C9           			RET
+224+  86C0
+225+  86C0              ; Divide (16 bit)
+226+  86C0              ; Returns HL=HL/BC
+227+  86C0              ;
+228+  86C0 E5           DIV16:			PUSH HL
+229+  86C1 AF           			XOR A
+230+  86C2 67           			LD H,A
+231+  86C3 6F           			LD L,A
+232+  86C4 D9           			EXX
+233+  86C5 06 10        			LD B,16
+234+  86C7 E1           			POP HL
+235+  86C8 ED 6A        1:			ADC HL,HL
+236+  86CA D9           			EXX
+237+  86CB ED 6A        			ADC HL,HL
+238+  86CD 17           			RLA
+239+  86CE ED 42        			SBC HL,BC
+240+  86D0 30 01        			JR NC,2F
+241+  86D2 09           			ADD HL,BC
+242+  86D3 3F           2:			CCF
+243+  86D4 D9           			EXX
+244+  86D5 10 F1        			DJNZ 1B
+245+  86D7 ED 6A        			ADC HL,HL
+246+  86D9 C9           			RET
+247+  86DA
+248+  86DA              ; Divide (24 bit)
+249+  86DA              ; Returns result in AHL
+250+  86DA              ;
+251+  86DA 00 00 00     DIVIDEND:		DS 3
+252+  86DD 00 00 00     DIVISOR:		DS 3
+253+  86E0
+254+  86E0 ED 4B DD 86  DIV24:			LD BC,(DIVISOR)
+255+  86E4 3A DF 86     			LD A,(DIVISOR+2)
+256+  86E7 57           			LD D,A
+257+  86E8 AF           			XOR A
+258+  86E9 67           			LD H,A
+259+  86EA 6F           			LD L,A
+260+  86EB D9           			EXX
+261+  86EC 06 18        			LD B,24
+262+  86EE 2A DA 86     			LD HL,(DIVIDEND)
+263+  86F1 3A DC 86     			LD A,(DIVIDEND+2)
+264+  86F4 5F           			LD E,A
+265+  86F5 AF           			XOR A
+266+  86F6 ED 6A        1:			ADC HL,HL
+267+  86F8 CB 13        			RL E
+268+  86FA D9           			EXX
+269+  86FB ED 6A        			ADC HL,HL
+270+  86FD 17           			RLA
+271+  86FE ED 42        			SBC HL,BC
+272+  8700 9A           			SBC D
+273+  8701 30 02        			JR NC,2F
+274+  8703 09           			ADD HL,BC
+275+  8704 8A           			ADC D
+276+  8705 3F           2:			CCF
+277+  8706 D9           			EXX
+278+  8707 10 ED        		 	DJNZ 1B
+279+  8709 ED 6A        			ADC HL,HL
+280+  870B CB 13        			RL E
+281+  870D 7B           			LD A,E
+282+  870E C9           			RET
+283+  870F
+284+  870F              ; Square Root (16 bit)
+285+  870F              ; HL=number to find square root of
+286+  870F              ; Returns result in A
+287+  870F              ;
+288+  870F 11 01 00     SQR16: 			LD DE,1
+289+  8712 AF           			XOR A
+290+  8713 3D           			DEC A
+291+  8714 ED 52        1:			SBC HL,DE
+292+  8716 13           			INC DE
+293+  8717 13           			INC DE
+294+  8718 3C           			INC A
+295+  8719 30 F9        			JR NC,1B
+296+  871B C9           			RET
+297+  871C
+298+  871C              ; Square Root (32 bit)
+299+  871C              ; BCDE=number to find square root of
+300+  871C              ; Returns result in DE
+301+  871C              ;
+302+  871C 78           SQR32:			LD A,B
+303+  871D D5           			PUSH DE
+304+  871E DD E1        			POP IX
+305+  8720 16 00        			LD D,0
+306+  8722 5A           			LD E,D
+307+  8723 62           			LD H,D
+308+  8724 6A           			LD L,D
+309+  8725 06 10        			LD B,16
+310+  8727 D6 40        1:			SUB 0x40
+311+  8729 ED 52        			SBC HL,DE
+312+  872B 30 04        			JR NC,2F
+313+  872D C6 40        			ADD A,0x40
+314+  872F ED 5A        			ADC HL,DE
+315+  8731 3F           2:			CCF
+316+  8732 CB 13        			RL E
+317+  8734 CB 12        			RL D
+318+  8736 DD 29        			ADD IX,IX
+319+  8738 CB 11        			RL C
+320+  873A 17           			RLA
+321+  873B ED 6A        			ADC HL,HL
+322+  873D 10 E8        			DJNZ 1B
+323+  873F C9           			RET
+324+  8740
+325+  8740              ; 16 bit random number routine I found on the web
+326+  8740              ; Returns a pseudo-random number in the HL register
+327+  8740              ;
+328+  8740              RND16_SEED:		EQU 12345
+329+  8740 11 39 30     RND16:			LD DE,RND16_SEED
+330+  8743 7A           			LD A,D
+331+  8744 63           			LD H,E
+332+  8745 2E FD        			LD L,253
+333+  8747 B7           			OR A
+334+  8748 ED 52        			SBC HL,DE
+335+  874A DE 00        			SBC A,0
+336+  874C ED 52        			SBC HL,DE
+337+  874E 16 00        			LD D,0
+338+  8750 9A           			SBC A,D
+339+  8751 5F           			LD E,A
+340+  8752 ED 52        			SBC HL,DE
+341+  8754 30 01        			JR NC,1F
+342+  8756 23           			INC HL
+343+  8757 22 41 87     1:			LD (RND16+1),HL
+344+  875A C9           			RET
+# file closed: /Users/martin/gitroot/martin-spectrum/src/../lib/math.z80
+ 27   875B
+ 28   875B F3           MAIN:			DI
+ 29   875C 31 F0 FF     			LD SP, Stack_Top
+ 30   875F 3E 38        			LD A,38h
+ 31   8761 CD 7F 80     			CALL Clear_Screen
+ 32   8764 DD 21 06 88  			LD IX,Text_Scores
+ 33   8768 CD A3 80     			CALL Print_String
+ 34   876B CD 90 87     			CALL Initialise_Sprites
+ 35   876E 21 D6 87     			LD HL,Interrupt
+ 36   8771 DD 21 F0 FF  			LD IX,0xFFF0
+ 37   8775 DD 36 04 C3  			LD (IX+04h),0xC3         		   ; Opcode for JP
+ 38   8779 DD 75 05     			LD (IX+05h),L
+ 39   877C DD 74 06     			LD (IX+06h),H
+ 40   877F DD 36 0F 18  			LD (IX+0Fh),0x18        		    ; Opcode for JR; this will do JR to FFF4h
+ 41   8783 3E 39        			LD A,0x39
+ 42   8785 ED 47        			LD I,A
+ 43   8787 ED 5E        			IM 2
+ 44   8789 FB           			EI
+ 45   878A
+ 46   878A 76           LOOP:			HALT
+ 47   878B CD 27 80     			CALL Read_Keyboard
+ 48   878E 18 FA        			JR LOOP
+ 49   8790
+ 50   8790 DD 21 EA 82  Initialise_Sprites:	LD IX,Sprite_Data
+ 51   8794 06 0D        			LD B,Sprite_Max
+ 52   8796 CD 40 87     Initialise_Sprites_1:	CALL RND16
+ 53   8799 7C           			LD A,H
+ 54   879A E6 7F        			AND 0x7F
+ 55   879C C6 10        			ADD A,16
+ 56   879E DD 75 01     			LD (IX+Sprite_X),L
+ 57   87A1 DD 75 08     			LD (IX+Sprite_X_Old),L
+ 58   87A4 DD 77 02     			LD (IX+Sprite_Y),A
+ 59   87A7 DD 77 09     			LD (IX+Sprite_Y_Old),A
+ 60   87AA 21 BB 87     			LD HL,Demo_Sprite_Logic
+ 61   87AD DD 75 05     			LD (IX+Sprite_Logic),L
+ 62   87B0 DD 74 06     			LD (IX+Sprite_Logic+1),H
+ 63   87B3 11 0A 00     			LD DE,Sprite_Data_Block_Size
+ 64   87B6 DD 19        			ADD IX,DE
+ 65   87B8 10 DC        			DJNZ Initialise_Sprites_1
+ 66   87BA C9           			RET
+ 67   87BB
+ 68   87BB DD 7E 01     Demo_Sprite_Logic:	LD A,(IX+Sprite_X)
+ 69   87BE 3C           			INC A
+ 70   87BF FE F0        			CP 240
+ 71   87C1 38 02        			JR C,Demo_Sprite_Logic_1
+ 72   87C3 3E 00        			LD A,0
+ 73   87C5 DD 77 01     Demo_Sprite_Logic_1	LD (IX+Sprite_X),A
+ 74   87C8 DD 7E 02     			LD A,(IX+Sprite_Y)
+ 75   87CB 3C           			INC A
+ 76   87CC FE B0        			CP 176
+ 77   87CE 38 02        			JR C,Demo_Sprite_Logic_2
+ 78   87D0 3E 10        			LD A,16
+ 79   87D2 DD 77 02     Demo_Sprite_Logic_2	LD (IX+Sprite_Y),A
+ 80   87D5 C9           			RET
+ 81   87D6
+ 82   87D6 F3           Interrupt:		DI
+ 83   87D7 F5           			PUSH AF
+ 84   87D8 C5           			PUSH BC
+ 85   87D9 D5           			PUSH DE
+ 86   87DA E5           			PUSH HL
+ 87   87DB DD E5        			PUSH IX
+ 88   87DD D9           			EXX
+ 89   87DE 08           			EX AF,AF'
+ 90   87DF F5           			PUSH AF
+ 91   87E0 C5           			PUSH BC
+ 92   87E1 D5           			PUSH DE
+ 93   87E2 E5           			PUSH HL
+ 94   87E3 FD E5        			PUSH IY
+ 95   87E5 3E 02        			LD A,2
+ 96   87E7 D3 FE        			OUT (254),A
+ 97   87E9 21 28 88     			LD HL,Sprite_Bubble
+ 98   87EC CD 84 82     			CALL Render_Sprites
+ 99   87EF CD 55 82     			CALL Handle_Sprites
+100   87F2 3E 07        			LD A,7
+101   87F4 D3 FE        			OUT (254),A
+102   87F6 FD E1        			POP IY
+103   87F8 E1           			POP HL
+104   87F9 D1           			POP DE
+105   87FA C1           			POP BC
+106   87FB F1           			POP AF
+107   87FC D9           			EXX
+108   87FD 08           			EX AF,AF'
+109   87FE DD E1        			POP IX
+110   8800 E1           			POP HL
+111   8801 D1           			POP DE
+112   8802 C1           			POP BC
+113   8803 F1           			POP AF
+114   8804 FB           			EI
+115   8805 C9           			RET
+116   8806
+117   8806 00 00 44 65  Text_Scores:		DB 0,0,"Demo",0xFE
+117   880A 6D 6F FE
+118   880D 09 00 53 63  			DB 9,0,"Score 00000000",0xFE
+118   8811 6F 72 65 20
+118   8815 30 30 30 30
+118   8819 30 30 30 30
+118   881D FE
+119   881E 18 00 4C 69  			DB 24,0,"Lives 0",0xFF
+119   8822 76 65 73 20
+119   8826 30 FF
+120   8828
+121   8828 38 88 38 88  Sprite_Bubble:		DW Sprite_Bubble_0,Sprite_Bubble_0,Sprite_Bubble_2,Sprite_Bubble_2,Sprite_Bubble_4,Sprite_Bubble_4,Sprite_Bubble_6,Sprite_Bubble_6
+121   882C 68 88 68 88
+121   8830 98 88 98 88
+121   8834 C8 88 C8 88
+122   8838
+123   8838 00 00 00     Sprite_Bubble_0:	DB %00000000,%00000000,%00000000
+124   883B 03 C0 00     			DB %00000011,%11000000,%00000000
+125   883E 0C 30 00     			DB %00001100,%00110000,%00000000
+126   8841 10 08 00     			DB %00010000,%00001000,%00000000
+127   8844 26 04 00     			DB %00100110,%00000100,%00000000
+128   8847 28 04 00     			DB %00101000,%00000100,%00000000
+129   884A 48 12 00     			DB %01001000,%00010010,%00000000
+130   884D 40 12 00     			DB %01000000,%00010010,%00000000
+131   8850 40 7A 00     			DB %01000000,%01111010,%00000000
+132   8853 40 12 00     			DB %01000000,%00010010,%00000000
+133   8856 3F 14 00     			DB %00111111,%00010100,%00000000
+134   8859 20 04 00     			DB %00100000,%00000100,%00000000
+135   885C 10 08 00     			DB %00010000,%00001000,%00000000
+136   885F 0C 30 00     			DB %00001100,%00110000,%00000000
+137   8862 03 C0 00     			DB %00000011,%11000000,%00000000
+138   8865 00 00 00     			DB %00000000,%00000000,%00000000
+139   8868
+140   8868 00 00 00     Sprite_Bubble_2:	DB %00000000,%00000000,%00000000
+141   886B 00 F0 00     			DB %00000000,%11110000,%00000000
+142   886E 03 0C 00     			DB %00000011,%00001100,%00000000
+143   8871 04 02 00     			DB %00000100,%00000010,%00000000
+144   8874 09 81 00     			DB %00001001,%10000001,%00000000
+145   8877 0A 01 00     			DB %00001010,%00000001,%00000000
+146   887A 12 00 80     			DB %00010010,%00000000,%10000000
+147   887D 10 00 80     			DB %00010000,%00000000,%10000000
+148   8880 10 00 80     			DB %00010000,%00000000,%10000000
+149   8883 10 00 80     			DB %00010000,%00000000,%10000000
+150   8886 08 01 00     			DB %00001000,%00000001,%00000000
+151   8889 08 01 00     			DB %00001000,%00000001,%00000000
+152   888C 04 02 00     			DB %00000100,%00000010,%00000000
+153   888F 03 0C 00     			DB %00000011,%00001100,%00000000
+154   8892 00 F0 00     			DB %00000000,%11110000,%00000000
+155   8895 00 00 00     			DB %00000000,%00000000,%00000000
+156   8898
+157   8898 00 00 00     Sprite_Bubble_4:	DB %00000000,%00000000,%00000000
+158   889B 00 3C 00     			DB %00000000,%00111100,%00000000
+159   889E 00 C3 00     			DB %00000000,%11000011,%00000000
+160   88A1 01 00 80     			DB %00000001,%00000000,%10000000
+161   88A4 02 60 40     			DB %00000010,%01100000,%01000000
+162   88A7 02 80 40     			DB %00000010,%10000000,%01000000
+163   88AA 04 80 20     			DB %00000100,%10000000,%00100000
+164   88AD 04 00 20     			DB %00000100,%00000000,%00100000
+165   88B0 04 00 20     			DB %00000100,%00000000,%00100000
+166   88B3 04 00 20     			DB %00000100,%00000000,%00100000
+167   88B6 02 00 40     			DB %00000010,%00000000,%01000000
+168   88B9 02 00 40     			DB %00000010,%00000000,%01000000
+169   88BC 01 00 80     			DB %00000001,%00000000,%10000000
+170   88BF 00 C3 00     			DB %00000000,%11000011,%00000000
+171   88C2 00 3C 00     			DB %00000000,%00111100,%00000000
+172   88C5 00 00 00     			DB %00000000,%00000000,%00000000
+173   88C8
+174   88C8 00 00 00     Sprite_Bubble_6:	DB %00000000,%00000000,%00000000
+175   88CB 00 0F 00     			DB %00000000,%00001111,%00000000
+176   88CE 00 30 C0     			DB %00000000,%00110000,%11000000
+177   88D1 00 40 20     			DB %00000000,%01000000,%00100000
+178   88D4 00 98 10     			DB %00000000,%10011000,%00010000
+179   88D7 00 A0 10     			DB %00000000,%10100000,%00010000
+180   88DA 01 20 08     			DB %00000001,%00100000,%00001000
+181   88DD 01 00 08     			DB %00000001,%00000000,%00001000
+182   88E0 01 00 08     			DB %00000001,%00000000,%00001000
+183   88E3 01 00 08     			DB %00000001,%00000000,%00001000
+184   88E6 00 80 10     			DB %00000000,%10000000,%00010000
+185   88E9 00 80 10     			DB %00000000,%10000000,%00010000
+186   88EC 00 40 20     			DB %00000000,%01000000,%00100000
+187   88EF 00 30 C0     			DB %00000000,%00110000,%11000000
+188   88F2 00 0F 00     			DB %00000000,%00001111,%00000000
+189   88F5 00 00 00     			DB %00000000,%00000000,%00000000
+190   88F8
+191   88F8              Code_Length:		EQU $-Code_Start+1
+192   88F8
+193   88F8              			SAVESNA "build/demo_sprites.sna", Code_Start
+194   88F8
+# file closed: /Users/martin/gitroot/martin-spectrum/src/demo_sprites.z80
